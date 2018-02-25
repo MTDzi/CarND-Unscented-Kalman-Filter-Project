@@ -50,10 +50,10 @@ UKF::UKF() {
     Xsig_pred_ = MatrixXd(n_x_, n_sigma_);
 
     // Process noise standard deviation longitudinal acceleration in m/s^2
-    std_a_ = 3; // TODO: adjust this
+    std_a_ = 2; // TODO: adjust this
 
     // Process noise standard deviation yaw acceleration in rad/s^2
-    std_yawdd_ = 3; // TODO: adjust this
+    std_yawdd_ = 2; // TODO: adjust this
 
     //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
     // Laser measurement noise standard deviation position1 in m
@@ -120,7 +120,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         if(use_radar_ && meas_package.sensor_type_ == MeasurementPackage::RADAR) {
             double rho = meas_package.raw_measurements_(0);
             double phi = meas_package.raw_measurements_(1);
-            // FYI, meas_package.raw_measurements_(2) is rho_dot, but we don't need it here
+            // NOTE: meas_package.raw_measurements_(2) is rho_dot, but we don't need it here
             x_ << cos(phi) * rho,
                   sin(phi) * rho,
                   0,
@@ -172,12 +172,12 @@ void UKF::Prediction(double dt) {
     vector, x_. Predict sigma points, the state, and the state covariance matrix.
     */
 
+    //I like it when the method names signify what they're actually doing
     GenerateSigmaPoints();
 
     PredictSigmaPoints(dt);
 
     PredictMeanAndCovariance();
-
 }
 
 void UKF::GenerateSigmaPoints() {
@@ -186,7 +186,6 @@ void UKF::GenerateSigmaPoints() {
     x_aug_.tail(n_aug_ - n_x_) << 0, 0;
 
     //update the augmented covariance matrix
-    P_aug_.fill(0.0); //TODO do I really need this?
     P_aug_.topLeftCorner(n_x_, n_x_) = P_;
     P_aug_.bottomRightCorner(n_aug_-n_x_, n_aug_-n_x_) << std_a_*std_a_, 0,
                                                           0,             std_yawdd_*std_yawdd_;
@@ -254,19 +253,14 @@ VectorXd UKF::PredictOne(VectorXd& x_aug, double dt) {
 void UKF::PredictMeanAndCovariance() {
     //predict state mean
     x_.fill(0.0);
-    for(int i = 0; i < Xsig_pred_.cols(); i++)
+    for(int i = 0; i < n_sigma_; i++)
         x_ += weights_(i) * Xsig_pred_.col(i);
 
     //predict state covariance matrix
     P_.fill(0.0);
-    for(int i = 0; i < Xsig_pred_.cols(); i++) {
+    for(int i = 0; i < n_sigma_; i++) {
         VectorXd diff = (Xsig_pred_.col(i) - x_);
-
-        //angle normalization
-        while(diff(3) > M_PI)
-            diff(3) -= 2.*M_PI;
-        while(diff(3) < -M_PI)
-            diff(3) += 2.*M_PI;
+        diff(3) = NormalizeAngle(diff(3));
 
         P_ += weights_(i) * diff * diff.transpose();
     }
