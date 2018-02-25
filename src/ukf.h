@@ -94,6 +94,10 @@ public:
     ///* Sigma point spreading parameter
     double lambda_;
 
+    ///* Normalized Innovation Squared used to determine the quality of the noise variables
+    double NIS_radar_;
+    double NIS_lidar_;
+
 
     /**
      * Constructor
@@ -151,6 +155,12 @@ public:
      * @param Xsig_out
      */
     void GenerateSigmaPoints();
+
+    /**
+     * A helper method used to normalize the angle
+     * @param Xsig_out
+     */
+    double NormalizeAngle(double angle);
 };
 
 #endif /* UKF_H */
